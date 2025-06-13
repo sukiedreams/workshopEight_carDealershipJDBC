@@ -2,12 +2,15 @@ package com.ps;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class UserInterface {
 
     private final SalesContractDAO salesDAO = new SalesContractDAO();
     private final LeaseContractsDAO leaseDAO = new LeaseContractsDAO();
+    private final VehicleDAO vehicleDAO = new VehicleDAO();
+    private final int dealershipId = 1;
     private Dealership dealership;
     private Scanner scanner = new Scanner(System.in);
 
@@ -102,10 +105,10 @@ public class UserInterface {
         System.out.println("---Sell or Lease Vehicle---");
 
         System.out.println("Enter the vehicles VIN: ");
-        int vin = scanner.nextInt();
+        String vin = scanner.next();
         scanner.nextLine();
 
-        Vehicle vehicle = findVehicleByVin(vin);
+        Vehicle vehicle = vehicleDAO.findByVin(vin);
         if (vehicle == null) {
             System.out.println("Vehicle not found.");
             return;
@@ -133,44 +136,28 @@ public class UserInterface {
             boolean wantsFinance = finance.equalsIgnoreCase("Yes");
             contract = new SalesContract(date, customerName, customerEmail, vehicle, wantsFinance);
 
-
+            System.out.println("Total Price: $" + contract.getTotalPrice());
             if (wantsFinance) {
-                System.out.println("Your Total: $" + String.format("%.2f", contract.getTotalPrice()));
-                System.out.println("Your Monthly Payment: $" + String.format("%.2f", contract.getMonthlyPayment()));
-            } else {
-                System.out.println("Your Total Price: $" + String.format("%.2f", contract.getTotalPrice()));
+                System.out.println("Monthly Payment: $" + contract.getMonthlyPayment());
             }
-            //lease
+            salesDAO.saveSalesContract((SalesContract) contract);
         } else if (choice == 2) {
+            //lease
             int vehicleAge = 2025 - vehicle.getYear();
             if (vehicleAge > 3) {
-                System.out.println("Can't lease a vehicle older than 3 years.");
+                System.out.println("Cant lease a vehicle older than 3 years.");
                 return;
             }
 
             contract = new LeaseContract(date, customerName, customerEmail, vehicle);
 
-            System.out.println("Total Lease: $" + String.format("%.2f", contract.getTotalPrice()));
-            System.out.println("Monthly Lease Payment: $" + String.format("%.2f", contract.getMonthlyPayment()));
-
-        } else {
-            System.out.println("Invalid option.");
-            return;
-        }
-        // okay this is to save the contract and remove the vehicle from the dealership
-        if (contract instanceof SalesContract) {
-            salesDAO.saveSalesContract((SalesContract) contract);
-        } else {
-            leaseDAO.saveLeaseContract((LeaseContract) contract);
+            System.out.println("Total");
         }
 
-//        dealership.removeVehicle(vehicle.getVin());
-//        DealershipFileManager.saveDealership(dealership);
+        }
 
-        System.out.println("Contract saved and vehicle has been removed.");
-    }
 
-    private Vehicle findVehicleByVin(int vin) {
+        private Vehicle findVehicleByVin(int vin) {
         for (Vehicle vehicle : dealership.getAllVehicles()) {
             if (vehicle.getVin() == vin) return vehicle;
         }
@@ -256,9 +243,8 @@ public class UserInterface {
 
     }
     private void processGetAllVehiclesRequest() {
-        System.out.println("---Display All Vehicles---"
-                ArrayList<Vehicle> all = dealership.getAllVehicles();
-        displayVehicles(all);
+        System.out.println("---Display All Vehicles---");
+        List<Vehicle> all = vehicleDAO.getAllVehiclesByDealership(dealershipId);
 
     }
     private void processAddVehicleRequest() {

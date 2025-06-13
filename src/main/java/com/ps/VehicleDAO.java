@@ -9,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class VehicleDAO {
 //    private static BasicDataSource dataSource;
@@ -94,5 +95,42 @@ public class VehicleDAO {
 //        return vehicle;
 //
 //    }
+    public List<Vehicle> getAllVehiclesByDealership(int dealershipId) {
+        List<Vehicle> vehicles = new ArrayList<>();
 
+        String sql = """
+                SELECT v.* FROM vehicles v
+                JOIN inventory i ON v.VIN = i.VIN
+                WHERE i.dealership_id = ?""";
+
+        try (Connection connection = getConnection();
+            PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setInt(1, dealershipId);
+            ResultSet resultSet = statement.executeQuery();
+
+            while (resultSet.next()) {
+                vehicles.add(mapRowToVehicle(resultSet));
+            }
+        } catch (SQLException e) {
+            System.out.println("Error retrieving vehicles: " + e.getMessage());
+        }
+
+        return vehicles;
+    }
+
+    private Vehicle mapRowToVehicle(ResultSet resultSet) throws SQLException {
+        Vehicle vehicle = new Vehicle();
+
+        vehicle.setVin(resultSet.getString("VIN"));
+        vehicle.setYear(resultSet.getInt("year"));
+        vehicle.setMake(resultSet.getString("make"));
+        vehicle.setModel(resultSet.getString("model"));
+        vehicle.setVehicleType(resultSet.getString("vehicle_type"));
+        vehicle.setColor(resultSet.getString("color"));
+        vehicle.setOdometer(resultSet.getInt("odometer"));
+        vehicle.setPrice(resultSet.getDouble("price"));
+        return vehicle;
+
+    }
 }
