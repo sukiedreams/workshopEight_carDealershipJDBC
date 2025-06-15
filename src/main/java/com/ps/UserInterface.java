@@ -1,28 +1,54 @@
 package com.ps;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
 public class UserInterface {
 
-    private final SalesContractDAO salesDAO = new SalesContractDAO();
-    private final LeaseContractsDAO leaseDAO = new LeaseContractsDAO();
-    private final VehicleDAO vehicleDAO = new VehicleDAO();
-    private final int dealershipId = 1;
     private Dealership dealership;
+    private SalesContractDAO salesContractDAO;
+    private LeaseContractsDAO leaseContractsDAO;
+    private VehicleDAO vehicleDAO;
+    private DealershipDAO dealershipDAO;
     private Scanner scanner = new Scanner(System.in);
 
+    private  void init() {
+        dealershipDAO = new DealershipDAO();
+        vehicleDAO = new VehicleDAO();
+        salesContractDAO = new SalesContractDAO();
+        leaseContractsDAO = new LeaseContractsDAO();
+
+        try {
+            this.dealership = dealershipDAO.getDealership();
+            if (this.dealership == null) {
+                System.out.println("No dealership found in database.");
+                Dealership defaultDealership = new Dealership("123 Main St", "555-123-4567");
+                dealershipDAO.saveDealership(defaultDealership);
+                this.dealership = dealershipDAO.getDealership();
+
+                if (this.dealership == null) {
+                    System.out.println("Error: failed to load or create a default dealership.");
+                    System.out.println("");
+                    System.exit(1);
+                } else {
+                    System.out.println("Default dealership created and loaded!");
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
 
     public UserInterface() {
         init();
-
     }
 
     public void display() {
-        //TODO: Create your main menu (do-while)
-        System.out.println("---welcome to Sukie's Dealership!---\n");
+        System.out.println("---Welcome---\n");
         System.out.println(" " +
                 "              #####                   \n" +
                 "        ########  ######              \n" +
@@ -41,6 +67,7 @@ public class UserInterface {
 
         do {
 
+            System.out.println("---Main Menu---\n");
             System.out.println("1. Get by Price");
             System.out.println("2. Get by Make/Model");
             System.out.println("3. Get by Year");
@@ -59,10 +86,6 @@ public class UserInterface {
             switch (mainMenuCommand) {
                 case 1:
                     processGetByPriceRequest();
-                    // TODO: ask the user for a starting price and ending price
-                    // ArrayList<Vehicle> filteredVehicles = dealership.getVehicleByPrice(startingPrice, endingPrice);
-                    //Display vehicle with loop
-
                     break;
                 case 2:
                     processGetByMakeModelRequest();
@@ -99,6 +122,12 @@ public class UserInterface {
 
         } while (mainMenuCommand != 0);
 
+        try {
+            DealershipDAO.shutdown();
+        } catch (SQLException e) {
+            System.out.println("Error shutting down database: " + e.getMessage());
+        }
+
     }
 
     private void processSellOrLeaseVehicle() {
@@ -106,9 +135,8 @@ public class UserInterface {
 
         System.out.println("Enter the vehicles VIN: ");
         String vin = scanner.next();
-        scanner.nextLine();
 
-        Vehicle vehicle = vehicleDAO.findByVin(vin);
+        Vehicle vehicle = dealership.findVehicleByVin(vin);
         if (vehicle == null) {
             System.out.println("Vehicle not found.");
             return;
@@ -123,6 +151,15 @@ public class UserInterface {
         System.out.println("would you like to (1) Sale or (2) Lease? ");
         int choice = scanner.nextInt();
 
+        if (scanner.hasNext()) {
+            choice = scanner.nextInt();
+            scanner.nextLine();
+        } else {
+            System.out.println("Invalid input, try again.");
+            scanner.nextLine();
+            return;
+        }
+
         Contract contract;
         String date = LocalDate.now().toString();
 
@@ -131,37 +168,35 @@ public class UserInterface {
             //this is sales
             System.out.println("Do you want to finance? (Yes or No): ");
             scanner.nextLine();
-
             String finance = scanner.nextLine();
             boolean wantsFinance = finance.equalsIgnoreCase("Yes");
             contract = new SalesContract(date, customerName, customerEmail, vehicle, wantsFinance);
+            salesContractDAO.saveSalesContract((SalesContract) contract);
 
-            System.out.println("Total Price: $" + contract.getTotalPrice());
+
             if (wantsFinance) {
-                System.out.println("Monthly Payment: $" + contract.getMonthlyPayment());
+                System.out.println("Total Price: $%.2f\n" + contract.getTotalPrice());
+                System.out.println("Monthly Payment: $%2.f\n" + contract.getMonthlyPayment());
+            } else {
+                System.out.println("Total Price: $%.2f\n" + contract.getTotalPrice());
             }
-            salesDAO.saveSalesContract((SalesContract) contract);
         } else if (choice == 2) {
             //lease
-            int vehicleAge = 2025 - vehicle.getYear();
+            int vehicleAge = LocalDate.now().getYear() - vehicle.getYear();
             if (vehicleAge > 3) {
                 System.out.println("Cant lease a vehicle older than 3 years.");
                 return;
             }
 
             contract = new LeaseContract(date, customerName, customerEmail, vehicle);
+            leaseContractsDAO.saveLeaseContract((LeaseContract) contract);
 
-            System.out.println("Total");
+            System.out.println("Total Lease: $%2.f\n" + contract.getTotalPrice());
+            System.out.println("Monthly Payment: $%2.f\n" + contract.getMonthlyPayment());
+
+        } else {
+            System.out.println("Invaild option.");
         }
-
-        }
-
-
-        private Vehicle findVehicleByVin(int vin) {
-        for (Vehicle vehicle : dealership.getAllVehicles()) {
-            if (vehicle.getVin() == vin) return vehicle;
-        }
-        return null;
     }
 
     private void processGetByPriceRequest() {
@@ -174,11 +209,11 @@ public class UserInterface {
         double max = scanner.nextDouble();
         scanner.nextLine();
 
-        ArrayList<Vehicle> filteredVehicles = dealership.vehiclesByPrice(min, max);
-
+        List<Vehicle> filteredVehicles = dealership.vehiclesByPrice(min, max);
         displayVehicles(filteredVehicles);
 
     }
+
     private void processGetByMakeModelRequest() {
         System.out.println("---Display vehicles by make and model---");
         scanner.nextLine();
@@ -189,9 +224,8 @@ public class UserInterface {
         System.out.println("Enter Model: ");
         String model = scanner.nextLine();
 
-        ArrayList<Vehicle> filteredVehicles = dealership.vehiclesByMakeModel(make, model);
+        List<Vehicle> filteredVehicles = dealership.vehiclesByMakeModel(make, model);
         displayVehicles(filteredVehicles);
-
     }
     private void processGetByYearRequest() {
         System.out.println("---Display Vehicles by year---");
@@ -202,7 +236,7 @@ public class UserInterface {
         int max = scanner.nextInt();
         scanner.nextLine();
 
-        ArrayList<Vehicle> filteredVehicles = dealership.vehiclesByYear(min, max);
+        List<Vehicle> filteredVehicles = dealership.vehiclesByYear(min, max);
         displayVehicles(filteredVehicles);
 
     }
@@ -214,7 +248,7 @@ public class UserInterface {
         String color = scanner.nextLine();
 
 
-        ArrayList<Vehicle> filteredVehicles = dealership.vehiclesByColor(color);
+        List<Vehicle> filteredVehicles = dealership.vehiclesByColor(color);
         displayVehicles(filteredVehicles);
 
     }
@@ -227,7 +261,7 @@ public class UserInterface {
         int max = scanner.nextInt();
         scanner.nextLine();
 
-        ArrayList<Vehicle> filteredVehicles = dealership.vehicleMileage(min, max);
+        List<Vehicle> filteredVehicles = dealership.vehiclesByMileage(min, max);
         displayVehicles(filteredVehicles);
     }
     private void processGetByVehicleTypeRequest() {
@@ -238,20 +272,22 @@ public class UserInterface {
         String type = scanner.nextLine();
 
 
-        ArrayList<Vehicle> filteredVehicles = dealership.vehicleByType(type);
+        List<Vehicle> filteredVehicles = dealership.vehiclesByType(type);
         displayVehicles(filteredVehicles);
 
     }
     private void processGetAllVehiclesRequest() {
         System.out.println("---Display All Vehicles---");
-        List<Vehicle> all = vehicleDAO.getAllVehiclesByDealership(dealershipId);
+        List<Vehicle> all = dealership.getAllVehicles();
+        displayVehicles(all);
+
 
     }
     private void processAddVehicleRequest() {
         System.out.println("---Add Vehicles");
 
         System.out.println("Enter Vin: ");
-        int vin = scanner.nextInt();
+        String vin = scanner.nextLine();
 
         System.out.println("Enter Year: ");
         int year = scanner.nextInt();
@@ -276,11 +312,8 @@ public class UserInterface {
         double price = scanner.nextDouble();
         scanner.nextLine();
 
-        Vehicle vehicle = new Vehicle(vin, year, make, model, type, color, odometer, price);
+        Vehicle vehicle = new Vehicle(vin, make, model, year, color, odometer, price, type);
         dealership.addVehicle(vehicle);
-
-        DealershipFileManager dfm = new DealershipFileManager();
-        dfm.saveDealership(dealership);
 
         System.out.println("Vehicle added successfully!");
 
@@ -290,19 +323,15 @@ public class UserInterface {
         System.out.println("---Remove Vehicle---\n");
 
         System.out.println("Enter VIN of the vehicle to remove: ");
-        int vin = scanner.nextInt();
-        scanner.nextLine();
+        String vin = scanner.nextLine();
 
         dealership.removeVehicle(vin);
-
-        DealershipFileManager dfm = new DealershipFileManager();
-        dfm.saveDealership(dealership);
 
         System.out.println("Vehicle Removed successfully!");
 
 
     }
-    private void displayVehicles(ArrayList<Vehicle> vehicles) {
+    private void displayVehicles(List<Vehicle> vehicles) {
         if (vehicles.isEmpty()) {
             System.out.println("No vehicles found");
         } else {

@@ -3,23 +3,23 @@ package com.ps;
 public class Vehicle {
 
     private String vin;
-    private int year;
     private String make;
     private String model;
-    private String vehicleType;
+    private int year;
     private String color;
     private int odometer;
     private double price;
+    private String vehicleType;
 
-    public Vehicle(String vin, int year, String make, String model, String vehicleType, String color, int odometer, double price) {
+    public Vehicle(String vin, String make, String model, int year, String color, int odometer, double price, String vehicleType) {
         this.vin = vin;
-        this.year = year;
         this.make = make;
         this.model = model;
-        this.vehicleType = vehicleType;
+        this.year = year;
         this.color = color;
         this.odometer = odometer;
         this.price = price;
+        this.vehicleType = vehicleType;
     }
 
     public String getVin() {
@@ -28,14 +28,6 @@ public class Vehicle {
 
     public void setVin(String vin) {
         this.vin = vin;
-    }
-
-    public int getYear() {
-        return year;
-    }
-
-    public void setYear(int year) {
-        this.year = year;
     }
 
     public String getMake() {
@@ -54,12 +46,12 @@ public class Vehicle {
         this.model = model;
     }
 
-    public String getVehicleType() {
-        return vehicleType;
+    public int getYear() {
+        return year;
     }
 
-    public void setVehicleType(String vehicleType) {
-        this.vehicleType = vehicleType;
+    public void setYear(int year) {
+        this.year = year;
     }
 
     public String getColor() {
@@ -86,17 +78,25 @@ public class Vehicle {
         this.price = price;
     }
 
+    public String getVehicleType() {
+        return vehicleType;
+    }
+
+    public void setVehicleType(String vehicleType) {
+        this.vehicleType = vehicleType;
+    }
+
     @Override
     public String toString() {
         return String.format("%d,%d,%s,%s,%s,%s,%d,%.2f\n",
                 this.vin,
-                this.year,
                 this.make,
                 this.model,
-                this.vehicleType,
+                this.year,
                 this.color,
                 this.odometer,
-                this.price
+                this.price,
+                this.vehicleType
         );
     }
 }

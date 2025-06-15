@@ -10,21 +10,25 @@ public class LeaseContractsDAO {
     public void saveLeaseContract(LeaseContract contract) {
         String sql = "INSERT INTO lease_contracts (VIN, lease_start, lease_end, monthly_payment) VALUES (?, ?, ?, ?)";
 
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = DealershipDAO.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             LocalDate startDate = LocalDate.parse(contract.getDate());
             LocalDate endDate = startDate.plusYears(2);
 
-            statement.setString(1, contract.getVehicle().getVin());
-            statement.setString(2, startDate.toString());
-            statement.setString(3, endDate.toString());
-            statement.setDouble(4, contract.getMonthlyPayment());
+            preparedStatement.setString(1, contract.getVehicle().getVin());
+            preparedStatement.setString(2, startDate.toString());
+            preparedStatement.setString(3, endDate.toString());
+            preparedStatement.setDouble(4, contract.getMonthlyPayment());
+            preparedStatement.executeUpdate();
+            System.out.println("Lease contract saved in the database!");
 
-            statement.executeUpdate();
+            VehicleDAO vehicleDAO = new VehicleDAO();
+            vehicleDAO.markVehicleAsSold(contract.getVehicle().getVin());
 
         } catch (SQLException e) {
             System.out.println("Error saving lease contract: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
